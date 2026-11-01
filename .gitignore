@@ -1,0 +1,6 @@
+rust/target/
+*.exe
+config.ini
+config.json
+# 旧版 Python 实现，已被 Rust 版取代
+久坐提醒.pyw
