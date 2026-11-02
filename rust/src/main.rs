@@ -319,6 +319,12 @@ unsafe fn make_icon(color: u32, size: i32) -> HICON {
     icon
 }
 
+/// 读取 build.rs 嵌入的图标组（资源 ID 1）
+unsafe fn load_icon(size: i32) -> Option<HICON> {
+    let h = LoadImageW(hinst(), 1 as _, IMAGE_ICON, size, size, 0);
+    (!h.is_null()).then_some(h as HICON)
+}
+
 // ---------- 托盘 ----------
 unsafe fn nid() -> NOTIFYICONDATAW {
     let mut n: NOTIFYICONDATAW = zeroed();
@@ -877,10 +883,12 @@ fn main() {
         a.clock_font = font(36, true, "Consolas");
         let small = GetSystemMetrics(SM_CXSMICON);
         a.icons = [make_icon(ACCENT, small), make_icon(GRAY, small), make_icon(ORANGE, small)];
-        a.big_icon = make_icon(ACCENT, GetSystemMetrics(SM_CXICON));
+        // 窗口图标优先用 exe 内嵌的图标（build.rs 嵌入，抗锯齿更清晰），托盘图标仍按状态现画
+        a.big_icon = load_icon(GetSystemMetrics(SM_CXICON)).unwrap_or_else(|| make_icon(ACCENT, GetSystemMetrics(SM_CXICON)));
+        let small_icon = load_icon(small).unwrap_or(a.icons[0]);
 
-        register(MAIN_CLASS, Some(main_proc), a.big_icon, a.icons[0], (COLOR_WINDOW + 1) as usize as HBRUSH);
-        register(BREAK_CLASS, Some(break_proc), a.big_icon, a.icons[0], null_mut());
+        register(MAIN_CLASS, Some(main_proc), a.big_icon, small_icon, (COLOR_WINDOW + 1) as usize as HBRUSH);
+        register(BREAK_CLASS, Some(break_proc), a.big_icon, small_icon, null_mut());
 
         let style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX;
         let mut r = RECT { left: 0, top: 0, right: s(340), bottom: s(392) };
